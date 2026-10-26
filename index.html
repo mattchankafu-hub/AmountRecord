@@ -2,132 +2,217 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>旅行公數記帳 App</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        [x-cloak] { display: none !important; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex justify-center items-center p-0 sm:p-4">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex justify-center items-center p-0 sm:p-4">
 
-    <!-- 手機外框容器 (在電腦看有 iPhone 感覺，在手機上看自動全螢幕) -->
-    <div class="w-full sm:max-w-[414px] h-screen sm:h-[896px] bg-slate-950 sm:rounded-[48px] sm:border-[8px] sm:border-slate-800 flex flex-col overflow-hidden shadow-2xl relative"
-         x-data="expenseApp()">
+    <!-- iPhone 17 比例容器 -->
+    <div class="w-full sm:max-w-[430px] h-[100dvh] sm:h-[912px] bg-slate-950 sm:rounded-[52px] sm:border-[8px] sm:border-slate-800 flex flex-col overflow-hidden shadow-2xl relative"
+         x-data="expenseApp()" x-cloak>
 
-        <!-- 動態島 / 頂部狀態列 -->
-        <div class="bg-slate-900 px-6 pt-3 pb-4 flex justify-between items-center border-b border-slate-800 shrink-0">
+        <!-- 頂部狀態列 -->
+        <div class="bg-slate-900/90 backdrop-blur-md px-6 pt-3 pb-3 flex justify-between items-center border-b border-slate-800/80 shrink-0">
             <div class="flex items-center space-x-2">
-                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                <span class="text-xs font-medium text-emerald-400">雲端記憶已同步</span>
+                <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span class="text-[11px] font-medium text-emerald-400">記憶已自動儲存</span>
             </div>
-            <div class="text-xs font-semibold text-slate-400">iPhone 17 專屬版</div>
+            <div class="text-[11px] font-semibold text-slate-400">旅行公數簿</div>
         </div>
 
-        <!-- 頂部標題與總覽 -->
-        <div class="p-5 bg-gradient-to-b from-slate-900 to-slate-950 shrink-0">
-            <div class="flex justify-between items-center mb-4">
-                <h1 class="text-xl font-bold tracking-tight">✈️ 我的旅行公數</h1>
-                <button @click="showAddModal = true" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-indigo-600/30 transition active:scale-95">
-                    + 記一筆
+        <!-- 頂部標題與 4 格總覽面板 -->
+        <div class="p-4 bg-gradient-to-b from-slate-900 to-slate-950 shrink-0 border-b border-slate-900">
+            <div class="flex justify-between items-center mb-3.5">
+                <h1 class="text-lg font-bold tracking-tight flex items-center gap-1.5">
+                    <span>✈️</span> <span>旅行公數記帳</span>
+                </h1>
+                <button @click="openModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-2 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 transition active:scale-95 flex items-center gap-1">
+                    <span class="text-sm leading-none">+</span> <span>記一筆</span>
                 </button>
             </div>
 
-            <!-- 數據卡片 -->
-            <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800/80">
-                    <div class="text-[10px] text-slate-400">總公數</div>
-                    <div class="text-sm font-bold text-slate-100" x-text="'$' + totalAmount"></div>
+            <!-- 4格數據卡片：總存入、已付支出、公數結餘、未付待辦 -->
+            <div class="grid grid-cols-4 gap-1.5 text-center">
+                <div class="bg-slate-900/90 p-2 rounded-2xl border border-slate-800/80">
+                    <div class="text-[10px] text-emerald-400/90 mb-0.5">總存入</div>
+                    <div class="text-xs font-bold text-emerald-400 truncate" x-text="'$' + totalIncome"></div>
                 </div>
-                <div class="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800/80">
-                    <div class="text-[10px] text-emerald-400">已付清</div>
-                    <div class="text-sm font-bold text-emerald-400" x-text="'$' + paidAmount"></div>
+                <div class="bg-slate-900/90 p-2 rounded-2xl border border-slate-800/80">
+                    <div class="text-[10px] text-rose-400/90 mb-0.5">已付支出</div>
+                    <div class="text-xs font-bold text-rose-400 truncate" x-text="'$' + paidExpense"></div>
                 </div>
-                <div class="bg-slate-900/80 p-2.5 rounded-2xl border border-slate-800/80">
-                    <div class="text-[10px] text-amber-400">未付待辦</div>
-                    <div class="text-sm font-bold text-amber-400" x-text="'$' + unpaidAmount"></div>
+                <div class="bg-slate-900/90 p-2 rounded-2xl border border-slate-800/80">
+                    <div class="text-[10px] text-indigo-300/90 mb-0.5">公數結餘</div>
+                    <div class="text-xs font-bold truncate" 
+                         :class="poolBalance >= 0 ? 'text-indigo-400' : 'text-rose-500'" 
+                         x-text="(poolBalance < 0 ? '-$' + Math.abs(poolBalance) : '$' + poolBalance)"></div>
+                </div>
+                <div class="bg-slate-900/90 p-2 rounded-2xl border border-slate-800/80">
+                    <div class="text-[10px] text-amber-400/90 mb-0.5">未付待辦</div>
+                    <div class="text-xs font-bold text-amber-400 truncate" x-text="'$' + unpaidExpense"></div>
                 </div>
             </div>
         </div>
 
         <!-- 導覽分頁切換 -->
-        <div class="flex border-b border-slate-800 bg-slate-900/50 shrink-0">
-            <button @click="currentTab = 'all'" :class="currentTab === 'all' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-400'" class="flex-1 py-3 text-xs font-medium border-b-2 transition">全部明細</button>
-            <button @click="currentTab = 'unpaid'" :class="currentTab === 'unpaid' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400'" class="flex-1 py-3 text-xs font-medium border-b-2 transition flex items-center justify-center space-x-1">
+        <div class="flex border-b border-slate-800 bg-slate-900/40 shrink-0">
+            <button @click="currentTab = 'all'" :class="currentTab === 'all' ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5' : 'border-transparent text-slate-400'" class="flex-1 py-2.5 text-xs font-semibold border-b-2 transition">全部明細</button>
+            <button @click="currentTab = 'income'" :class="currentTab === 'income' ? 'border-emerald-500 text-emerald-400 bg-emerald-500/5' : 'border-transparent text-slate-400'" class="flex-1 py-2.5 text-xs font-semibold border-b-2 transition">存入紀錄</button>
+            <button @click="currentTab = 'unpaid'" :class="currentTab === 'unpaid' ? 'border-amber-500 text-amber-400 bg-amber-500/5' : 'border-transparent text-slate-400'" class="flex-1 py-2.5 text-xs font-semibold border-b-2 transition flex items-center justify-center space-x-1">
                 <span>未付待辦</span>
-                <span class="bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full text-[10px]" x-text="unpaidList.length"></span>
+                <span x-show="unpaidList.length > 0" class="bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded-full text-[10px]" x-text="unpaidList.length"></span>
             </button>
-            <button @click="currentTab = 'settle'" :class="currentTab === 'settle' ? 'border-emerald-500 text-emerald-400' : 'border-transparent text-slate-400'" class="flex-1 py-3 text-xs font-medium border-b-2 transition">夾錢結算</button>
+            <button @click="currentTab = 'settle'" :class="currentTab === 'settle' ? 'border-indigo-400 text-indigo-300 bg-indigo-500/5' : 'border-transparent text-slate-400'" class="flex-1 py-2.5 text-xs font-semibold border-b-2 transition">夾錢結算</button>
         </div>
 
         <!-- 內容滾動區 -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
+        <div class="flex-1 overflow-y-auto p-3.5 space-y-2.5 pb-20">
             
-            <!-- 分頁 1：全部明細 -->
+            <!-- 分頁 1：全部明細 (包含存入與支出) -->
             <template x-if="currentTab === 'all'">
-                <div class="space-y-2.5">
-                    <template x-for="item in expenses" :key="item.id">
-                        <div class="bg-slate-900 border border-slate-800/80 p-3.5 rounded-2xl flex justify-between items-center shadow-sm">
-                            <div class="space-y-1">
-                                <div class="flex items-center space-x-2">
-                                    <span class="font-semibold text-sm text-slate-200" x-text="item.title"></span>
-                                    <span :class="item.status === 'paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'" class="text-[10px] px-2 py-0.5 rounded-full border" x-text="item.status === 'paid' ? '已付' : '未付'"></span>
+                <div class="space-y-2">
+                    <template x-for="item in records" :key="item.id">
+                        <div class="bg-slate-900/90 border border-slate-800/90 p-3.5 rounded-2xl flex justify-between items-center shadow-sm">
+                            <div class="space-y-1 pr-2">
+                                <div class="flex items-center flex-wrap gap-1.5">
+                                    <!-- 存入 / 支出 標籤 -->
+                                    <span :class="item.type === 'income' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/15 text-rose-400 border-rose-500/30'" 
+                                          class="text-[10px] font-bold px-2 py-0.5 rounded-md border" 
+                                          x-text="item.type === 'income' ? '存入' : '支出'"></span>
+                                    
+                                    <span class="font-semibold text-sm text-slate-100" x-text="item.title"></span>
+
+                                    <!-- 未付標籤 (僅限支出) -->
+                                    <span x-show="item.type === 'expense' && item.status === 'unpaid'" 
+                                          class="bg-amber-500/15 text-amber-400 border border-amber-500/30 text-[10px] px-2 py-0.5 rounded-full">未付</span>
                                 </div>
-                                <div class="text-xs text-slate-400">
-                                    先付：<span class="text-slate-300 font-medium" x-text="item.payer"></span> | 分類：<span x-text="item.category"></span>
+                                <div class="text-xs text-slate-400 flex items-center gap-2">
+                                    <span>
+                                        <span x-text="item.type === 'income' ? '存入人：' : '付款：'"></span>
+                                        <span class="text-slate-200 font-medium" x-text="item.payer"></span>
+                                    </span>
+                                    <span>•</span>
+                                    <span x-text="item.category"></span>
                                 </div>
                             </div>
-                            <div class="text-right flex items-center space-x-3">
+
+                            <div class="text-right flex items-center space-x-2.5 shrink-0">
                                 <div>
-                                    <div class="text-sm font-bold text-slate-100" x-text="'$' + item.amount"></div>
-                                    <button @click="toggleStatus(item.id)" class="text-[10px] underline text-indigo-400 mt-0.5">切換狀態</button>
+                                    <div class="text-sm font-bold" 
+                                         :class="item.type === 'income' ? 'text-emerald-400' : (item.status === 'unpaid' ? 'text-amber-400' : 'text-slate-100')" 
+                                         x-text="(item.type === 'income' ? '+$' : '-$') + item.amount"></div>
+                                    <button x-show="item.type === 'expense'" 
+                                            @click="toggleStatus(item.id)" 
+                                            class="text-[10px] underline text-slate-400 hover:text-indigo-400 mt-0.5 block ml-auto"
+                                            x-text="item.status === 'paid' ? '改為未付' : '標記已付'"></button>
                                 </div>
+                                <button @click="deleteItem(item.id)" class="text-slate-600 hover:text-rose-400 text-xs p-1.5">✕</button>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="records.length === 0" class="text-center py-14 text-slate-500 text-xs">暫無紀錄，點擊右上角「+ 記一筆」開始</div>
+                </div>
+            </template>
+
+            <!-- 分頁 2：存入紀錄 -->
+            <template x-if="currentTab === 'income'">
+                <div class="space-y-2">
+                    <template x-for="item in incomeList" :key="item.id">
+                        <div class="bg-slate-900 border border-emerald-500/25 p-3.5 rounded-2xl flex justify-between items-center">
+                            <div class="space-y-1">
+                                <div class="font-semibold text-sm text-emerald-100" x-text="item.title"></div>
+                                <div class="text-xs text-slate-400">存入人：<span class="text-emerald-300 font-medium" x-text="item.payer"></span></div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <span class="text-sm font-bold text-emerald-400" x-text="'+$' + item.amount"></span>
                                 <button @click="deleteItem(item.id)" class="text-slate-600 hover:text-rose-400 text-xs p-1">✕</button>
                             </div>
                         </div>
                     </template>
-                    <div x-show="expenses.length === 0" class="text-center py-12 text-slate-500 text-xs">暫無記帳紀錄，點擊右上角「+ 記一筆」開始</div>
+                    <div x-show="incomeList.length === 0" class="text-center py-14 text-slate-500 text-xs">尚無公數存入紀錄</div>
                 </div>
             </template>
 
-            <!-- 分頁 2：未付待辦 -->
+            <!-- 分頁 3：未付待辦 -->
             <template x-if="currentTab === 'unpaid'">
-                <div class="space-y-2.5">
+                <div class="space-y-2">
                     <template x-for="item in unpaidList" :key="item.id">
                         <div class="bg-slate-900 border border-amber-500/30 p-3.5 rounded-2xl flex justify-between items-center shadow-sm">
                             <div class="space-y-1">
                                 <div class="font-semibold text-sm text-amber-200" x-text="item.title"></div>
-                                <div class="text-xs text-slate-400">預計費用：<span class="text-amber-400 font-bold" x-text="'$' + item.amount"></span></div>
+                                <div class="text-xs text-slate-400">
+                                    預計由 <span class="text-slate-200" x-text="item.payer"></span> 支付 • 
+                                    <span class="text-amber-400 font-bold" x-text="'$' + item.amount"></span>
+                                </div>
                             </div>
-                            <button @click="markAsPaid(item.id)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition">
+                            <button @click="markAsPaid(item.id)" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-semibold shadow transition active:scale-95">
                                 標記已付 ✓
                             </button>
                         </div>
                     </template>
-                    <div x-show="unpaidList.length === 0" class="text-center py-12 text-emerald-400 text-xs">太棒了！所有項目均已付清 🎉</div>
+                    <div x-show="unpaidList.length === 0" class="text-center py-14 text-emerald-400 text-xs">太棒了！所有待辦尾數均已付清 🎉</div>
                 </div>
             </template>
 
-            <!-- 分頁 3：夾錢結算 -->
+            <!-- 分頁 4：夾錢結算 -->
             <template x-if="currentTab === 'settle'">
-                <div class="space-y-4">
-                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
-                        <h3 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">每人墊支統計</h3>
-                        <template x-for="(amt, payer) in payerSummary">
+                <div class="space-y-3.5">
+                    <!-- 公數池狀態 -->
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
+                        <h3 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider">🏦 公數池狀態 (Common Pool)</h3>
+                        <div class="flex justify-between text-xs text-slate-300">
+                            <span>大家存入公數總額：</span>
+                            <span class="font-bold text-emerald-400" x-text="'$' + totalIncome"></span>
+                        </div>
+                        <div class="flex justify-between text-xs text-slate-300">
+                            <span>由「公數池」直接支付：</span>
+                            <span class="font-bold text-rose-400" x-text="'-$' + poolSpent"></span>
+                        </div>
+                        <div class="border-t border-slate-800 pt-2 flex justify-between text-sm">
+                            <span class="font-semibold text-slate-200">目前公數池剩餘：</span>
+                            <span class="font-bold" :class="poolBalance >= 0 ? 'text-indigo-400' : 'text-rose-400'" x-text="'$' + poolBalance"></span>
+                        </div>
+                    </div>
+
+                    <!-- 每人存入統計 -->
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2.5">
+                        <h3 class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">💰 每人已存入公數</h3>
+                        <template x-for="(amt, person) in incomeByPerson" :key="person">
                             <div class="flex justify-between text-sm">
-                                <span class="text-slate-300" x-text="payer"></span>
+                                <span class="text-slate-300" x-text="person"></span>
+                                <span class="font-bold text-emerald-400" x-text="'+$' + amt"></span>
+                            </div>
+                        </template>
+                        <div x-show="Object.keys(incomeByPerson).length === 0" class="text-xs text-slate-500">暫無旅伴存入紀錄</div>
+                    </div>
+
+                    <!-- 每人私人墊支統計 -->
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2.5">
+                        <h3 class="text-xs font-semibold text-rose-400 uppercase tracking-wider">💳 旅伴私人墊支 (未計公數池付款)</h3>
+                        <template x-for="(amt, person) in outOfPocketByPerson" :key="person">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-300" x-text="person"></span>
                                 <span class="font-bold text-slate-100" x-text="'$' + amt"></span>
                             </div>
                         </template>
+                        <div x-show="Object.keys(outOfPocketByPerson).length === 0" class="text-xs text-slate-500">暫無私人墊支紀錄</div>
                     </div>
 
-                    <div class="bg-indigo-950/40 border border-indigo-500/30 p-4 rounded-2xl space-y-2">
-                        <h3 class="text-xs font-semibold text-indigo-300 uppercase tracking-wider">💡 結算建議 (PayMe / FPS)</h3>
-                        <p class="text-xs text-slate-300 leading-relaxed">
-                            總共花費 <span class="font-bold text-white" x-text="'$' + totalAmount"></span>，平分給 <span class="font-bold text-white">3位</span> 旅伴（每人約 <span class="font-bold text-emerald-400" x-text="'$' + Math.round(totalAmount/3)"></span>）。系統會自動幫你計算最簡便的轉帳方案，確保結算清清楚楚！
-                        </p>
+                    <!-- 資料重置區 -->
+                    <div class="pt-4 text-center">
+                        <button @click="resetAll()" class="text-[11px] text-slate-500 hover:text-rose-400 underline">清除所有記帳資料（重新開始）</button>
                     </div>
                 </div>
             </template>
@@ -136,104 +221,214 @@
 
         <!-- 新增記帳彈跳視窗 (Modal) -->
         <div x-show="showAddModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-            <div @click.outside="showAddModal = false" class="bg-slate-900 w-full sm:max-w-md rounded-t-[32px] sm:rounded-3xl border border-slate-800 p-6 space-y-4 shadow-2xl">
+            <div @click.outside="showAddModal = false" class="bg-slate-900 w-full sm:max-w-md rounded-t-[32px] sm:rounded-3xl border border-slate-800 p-5 space-y-4 shadow-2xl">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-base font-bold text-white">新增公數項目</h2>
-                    <button @click="showAddModal = false" class="text-slate-400 text-sm">✕</button>
+                    <h2 class="text-base font-bold text-white">新增記帳項目</h2>
+                    <button @click="showAddModal = false" class="text-slate-400 text-sm p-1">✕</button>
+                </div>
+
+                <!-- 切換：支出 vs 存入 -->
+                <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-2xl border border-slate-800">
+                    <button type="button" 
+                            @click="newItem.type = 'expense'" 
+                            :class="newItem.type === 'expense' ? 'bg-rose-600 text-white shadow' : 'text-slate-400'" 
+                            class="py-2 rounded-xl text-xs font-bold transition">
+                        💸 支出 (消費)
+                    </button>
+                    <button type="button" 
+                            @click="newItem.type = 'income'; newItem.status = 'paid'" 
+                            :class="newItem.type === 'income' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400'" 
+                            class="py-2 rounded-xl text-xs font-bold transition">
+                        💰 存入 (入金)
+                    </button>
                 </div>
                 
                 <div class="space-y-3 text-xs">
                     <div>
-                        <label class="text-slate-400 block mb-1">消費項目名稱</label>
-                        <input type="text" x-model="newItem.title" placeholder="例如：酒店尾數、包車費用" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+                        <label class="text-slate-400 block mb-1" x-text="newItem.type === 'income' ? '存入說明' : '消費項目名稱'"></label>
+                        <input type="text" x-model="newItem.title" 
+                               :placeholder="newItem.type === 'income' ? '例如：第一輪每人夾錢、兌換日圓公數' : '例如：居酒屋晚餐、租車尾數'" 
+                               class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-indigo-500">
                     </div>
+
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="text-slate-400 block mb-1">金額 ($)</label>
-                            <input type="number" x-model="newItem.amount" placeholder="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+                            <input type="number" inputmode="decimal" x-model="newItem.amount" placeholder="0" 
+                                   class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm font-bold focus:outline-none focus:border-indigo-500">
                         </div>
                         <div>
-                            <label class="text-slate-400 block mb-1">誰付的錢</label>
-                            <input type="text" x-model="newItem.payer" placeholder="例如：Alex" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+                            <label class="text-slate-400 block mb-1" x-text="newItem.type === 'income' ? '存入人' : '誰付的錢'"></label>
+                            <input type="text" x-model="newItem.payer" placeholder="例如：Matt / 公數池" 
+                                   class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-indigo-500">
                         </div>
                     </div>
-                    <div>
-                        <label class="text-slate-400 block mb-1">付款狀態</label>
-                        <select x-model="newItem.status" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
-                            <option value="paid">已付清</option>
-                            <option value="unpaid">未付（待辦尾數）</option>
-                        </select>
+
+                    <!-- 快速選擇付款/存入人標籤 -->
+                    <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                        <span class="text-[11px] text-slate-500">快速填入：</span>
+                        <button type="button" x-show="newItem.type === 'expense'" @click="newItem.payer = '公數池'" class="text-[11px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-lg">🏦 公數池</button>
+                        <button type="button" @click="newItem.payer = 'Matt'" class="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg">Matt</button>
+                        <button type="button" @click="newItem.payer = '旅伴A'" class="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg">旅伴A</button>
+                        <button type="button" @click="newItem.payer = '旅伴B'" class="text-[11px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded-lg">旅伴B</button>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2" x-show="newItem.type === 'expense'">
+                        <div>
+                            <label class="text-slate-400 block mb-1">分類</label>
+                            <select x-model="newItem.category" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-indigo-500">
+                                <option value="餐飲">🍽️ 餐飲</option>
+                                <option value="交通">🚗 交通 / 租車</option>
+                                <option value="住宿">🏨 住宿</option>
+                                <option value="門票/娛樂">🎟️ 門票 / 娛樂</option>
+                                <option value="購物">🛍️ 購物 / 手信</option>
+                                <option value="其他">📦 其他</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-slate-400 block mb-1">付款狀態</label>
+                            <select x-model="newItem.status" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-indigo-500">
+                                <option value="paid">✅ 已付清</option>
+                                <option value="unpaid">⏳ 未付 (待辦)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <button @click="addExpense()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-semibold text-sm transition shadow-lg shadow-indigo-600/30">
-                    確認新增
+                <button @click="addRecord()" 
+                        :class="newItem.type === 'income' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30' : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'"
+                        class="w-full text-white py-3.5 rounded-xl font-semibold text-sm transition shadow-lg">
+                    <span x-text="newItem.type === 'income' ? '確認存入公數' : '確認新增支出'"></span>
                 </button>
             </div>
         </div>
 
     </div>
 
-    <!-- Alpine.js 邏輯控制器 -->
+    <!-- 邏輯控制器 -->
     <script>
         function expenseApp() {
+            const STORAGE_KEY = 'travel_ledger_v2';
+            const defaultData = [
+                { id: 1, type: 'income', title: '出發前每人夾公數', amount: 5000, payer: 'Matt', category: '公數入金', status: 'paid' },
+                { id: 2, type: 'expense', title: '第一晚溫泉酒店', amount: 2400, payer: '公數池', category: '住宿', status: 'paid' },
+                { id: 3, type: 'expense', title: '包車一日遊墊支', amount: 1500, payer: 'Matt', category: '交通', status: 'paid' },
+                { id: 4, type: 'expense', title: '螃蟹大餐尾數', amount: 880, payer: '未定', category: '餐飲', status: 'unpaid' }
+            ];
+
+            // 兼容舊版資料並升級
+            let saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+            if (!saved) {
+                const oldSaved = JSON.parse(localStorage.getItem('travel_expenses') || 'null');
+                if (oldSaved && Array.isArray(oldSaved)) {
+                    saved = oldSaved.map(item => ({
+                        ...item,
+                        type: item.type || 'expense'
+                    }));
+                } else {
+                    saved = defaultData;
+                }
+            }
+
             return {
                 currentTab: 'all',
                 showAddModal: false,
-                expenses: JSON.parse(localStorage.getItem('travel_expenses') || JSON.stringify([
-                    { id: 1, title: '第一晚溫泉酒店', amount: 2400, payer: 'Alex', category: '住宿', status: 'paid' },
-                    { id: 2, title: '第二天包車一日遊', amount: 1500, payer: 'Chris', category: '交通', status: 'paid' },
-                    { id: 3, title: '晚餐海鮮大餐尾數', amount: 880, payer: '未定', category: '餐飲', status: 'unpaid' }
-                ])),
-                newItem: { title: '', amount: '', payer: 'Alex', category: '一般', status: 'paid' },
+                records: saved,
+                newItem: { type: 'expense', title: '', amount: '', payer: '公數池', category: '餐飲', status: 'paid' },
 
-                get totalAmount() {
-                    return this.expenses.reduce((sum, item) => sum + Number(item.amount), 0);
+                openModal() {
+                    this.newItem = { type: 'expense', title: '', amount: '', payer: '公數池', category: '餐飲', status: 'paid' };
+                    this.showAddModal = true;
                 },
-                get paidAmount() {
-                    return this.expenses.filter(i => i.status === 'paid').reduce((sum, item) => sum + Number(item.amount), 0);
+
+                // 總存入金額
+                get totalIncome() {
+                    return this.records
+                        .filter(i => i.type === 'income')
+                        .reduce((sum, item) => sum + Number(item.amount), 0);
                 },
-                get unpaidAmount() {
-                    return this.expenses.filter(i => i.status === 'unpaid').reduce((sum, item) => sum + Number(item.amount), 0);
+
+                // 總已付支出
+                get paidExpense() {
+                    return this.records
+                        .filter(i => i.type === 'expense' && i.status === 'paid')
+                        .reduce((sum, item) => sum + Number(item.amount), 0);
                 },
+
+                // 由「公數池」支付的金額
+                get poolSpent() {
+                    return this.records
+                        .filter(i => i.type === 'expense' && i.status === 'paid' && i.payer === '公數池')
+                        .reduce((sum, item) => sum + Number(item.amount), 0);
+                },
+
+                // 公數池剩餘結餘 (總存入 - 公數池已付支出)
+                get poolBalance() {
+                    return this.totalIncome - this.poolSpent;
+                },
+
+                // 未付待辦總額
+                get unpaidExpense() {
+                    return this.records
+                        .filter(i => i.type === 'expense' && i.status === 'unpaid')
+                        .reduce((sum, item) => sum + Number(item.amount), 0);
+                },
+
+                get incomeList() {
+                    return this.records.filter(i => i.type === 'income');
+                },
+
                 get unpaidList() {
-                    return this.expenses.filter(i => i.status === 'unpaid');
+                    return this.records.filter(i => i.type === 'expense' && i.status === 'unpaid');
                 },
-                get payerSummary() {
+
+                // 統計每人存入了多少公數
+                get incomeByPerson() {
                     let summary = {};
-                    this.expenses.forEach(i => {
-                        if (i.status === 'paid' && i.payer) {
+                    this.records.forEach(i => {
+                        if (i.type === 'income' && i.payer) {
                             summary[i.payer] = (summary[i.payer] || 0) + Number(i.amount);
                         }
                     });
                     return summary;
                 },
 
-                addExpense() {
+                // 統計每人私人墊支了多少 (排除「公數池」付款)
+                get outOfPocketByPerson() {
+                    let summary = {};
+                    this.records.forEach(i => {
+                        if (i.type === 'expense' && i.status === 'paid' && i.payer && i.payer !== '公數池') {
+                            summary[i.payer] = (summary[i.payer] || 0) + Number(i.amount);
+                        }
+                    });
+                    return summary;
+                },
+
+                addRecord() {
                     if (!this.newItem.title || !this.newItem.amount) return;
-                    this.expenses.push({
+                    this.records.unshift({
                         id: Date.now(),
+                        type: this.newItem.type,
                         title: this.newItem.title,
                         amount: Number(this.newItem.amount),
-                        payer: this.newItem.payer || '自己',
-                        category: '一般',
-                        status: this.newItem.status
+                        payer: this.newItem.payer || (this.newItem.type === 'income' ? 'Matt' : '公數池'),
+                        category: this.newItem.type === 'income' ? '公數入金' : this.newItem.category,
+                        status: this.newItem.type === 'income' ? 'paid' : this.newItem.status
                     });
                     this.save();
-                    this.newItem = { title: '', amount: '', payer: 'Alex', category: '一般', status: 'paid' };
                     this.showAddModal = false;
                 },
 
                 toggleStatus(id) {
-                    let item = this.expenses.find(i => i.id === id);
-                    if (item) {
+                    let item = this.records.find(i => i.id === id);
+                    if (item && item.type === 'expense') {
                         item.status = item.status === 'paid' ? 'unpaid' : 'paid';
                         this.save();
                     }
                 },
 
                 markAsPaid(id) {
-                    let item = this.expenses.find(i => i.id === id);
+                    let item = this.records.find(i => i.id === id);
                     if (item) {
                         item.status = 'paid';
                         this.save();
@@ -241,12 +436,19 @@
                 },
 
                 deleteItem(id) {
-                    this.expenses = this.expenses.filter(i => i.id !== id);
+                    this.records = this.records.filter(i => i.id !== id);
                     this.save();
                 },
 
+                resetAll() {
+                    if (confirm('確定要清空所有記帳紀錄嗎？此操作無法還原。')) {
+                        this.records = [];
+                        this.save();
+                    }
+                },
+
                 save() {
-                    localStorage.setItem('travel_expenses', JSON.stringify(this.expenses));
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.records));
                 }
             }
         }
