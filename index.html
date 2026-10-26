@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>旅行公數記帳程式 (iPhone 17 專屬版)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* 自定義捲軸隱藏但可滾動 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-center sm:py-6 select-none">
+
+    <!-- 電腦端頂部預覽切換列 -->
+    <div class="hidden sm:flex items-center gap-3 mb-3 bg-slate-900/90 border border-slate-800 px-4 py-1.5 rounded-full text-xs text-slate-400 shadow-lg">
+        <span class="flex items-center gap-1.5 text-indigo-400 font-medium">
+            <i class="fa-solid fa-mobile-screen-button"></i> iPhone 17 螢幕比例模擬
+        </span>
+        <span class="text-slate-700">|</span>
+        <button onclick="togglePhoneFrame()" id="frameToggleBtn" class="hover:text-white transition">切換全寬顯示</button>
+    </div>
+
+    <!-- 主容器 (Phone Wrapper) -->
+    <div id="phoneWrapper" class="relative w-full h-dvh sm:w-[412px] sm:h-[884px] sm:rounded-[54px] sm:border-[10px] sm:border-slate-800 sm:shadow-[0_0_60px_rgba(79,70,229,0.25)] bg-slate-900 text-slate-100 flex flex-col overflow-hidden transition-all duration-300">
+        
+        <!-- iPhone 17 頂部狀態列與 Dynamic Island (動態島) 記憶狀態 -->
+        <div class="bg-indigo-950 text-white pt-2 pb-2 px-6 flex items-center justify-between text-xs font-semibold shrink-0 z-30">
+            <span id="currentTime">9:41</span>
+            
+            <!-- Dynamic Island 雲端記憶同步指示器 -->
+            <div class="bg-black/95 border border-white/10 px-3.5 py-1 rounded-full flex items-center gap-2 shadow-inner">
+                <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="syncText" class="text-[11px] tracking-tight text-slate-200">雲端記憶已儲存</span>
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <span class="text-[10px] bg-white/15 px-1.5 py-0.5 rounded">5G</span>
+                <i class="fa-solid fa-battery-full text-emerald-400"></i>
+            </div>
+        </div>
+
+        <!-- 頂部 Header：旅程資訊與核心卡片 -->
+        <div class="bg-gradient-to-b from-indigo-950 via-indigo-900 to-slate-900 text-white px-5 pt-2 pb-5 rounded-b-[32px] shadow-xl shrink-0 relative z-20">
+            <div class="flex items-center justify-between mb-3">
+                <div class="relative flex-1 mr-2">
+                    <select id="tripSelector" onchange="switchTrip(this.value)" class="w-full appearance-none bg-white/10 hover:bg-white/15 text-white font-bold text-sm py-1.5 pl-3 pr-8 rounded-2xl border border-white/15 focus:outline-none cursor-pointer">
+                        <!-- 動態填入旅程選項 -->
+                    </select>
+                    <i class="fa-solid fa-chevron-down text-white/70 text-xs absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                </div>
+
+                <button onclick="copySummary()" class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 active:scale-95 transition px-3 py-1.5 rounded-2xl text-xs font-medium border border-white/10 shrink-0">
+                    <i class="fa-regular fa-copy text-indigo-300"></i>
+                    <span>複製找數表</span>
+                </button>
+            </div>
+
+            <!-- 三格核心公數指標 -->
+            <div class="grid grid-cols-3 gap-2">
+                <div class="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-2.5">
+                    <div class="text-[11px] text-indigo-200 flex items-center gap-1 mb-0.5">
+                        <i class="fa-solid fa-wallet text-[10px]"></i> 總公數
+                    </div>
+                    <div id="statTotal" class="text-sm font-extrabold tracking-tight truncate">HK$0</div>
+                    <div id="statTotalForeign" class="text-[10px] text-indigo-300 truncate"></div>
+                </div>
+
+                <button onclick="setTab('expenses', 'paid')" class="bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/25 rounded-2xl p-2.5 text-left transition active:scale-95">
+                    <div class="text-[11px] text-emerald-300 flex items-center justify-between mb-0.5">
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-circle-check text-[10px]"></i> 已付</span>
+                        <span id="statPaidCount" class="bg-emerald-500/30 px-1.5 rounded-full text-[9px]">0筆</span>
+                    </div>
+                    <div id="statPaid" class="text-sm font-extrabold text-emerald-200 tracking-tight truncate">HK$0</div>
+                </button>
+
+                <button onclick="setTab('unpaid')" class="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 rounded-2xl p-2.5 text-left transition active:scale-95">
+                    <div class="text-[11px] text-amber-300 flex items-center justify-between mb-0.5">
+                        <span class="flex items-center gap-1"><i class="fa-solid fa-clock text-[10px]"></i> 未付</span>
+                        <span id="statUnpaidCount" class="bg-amber-500 text-slate-950 font-bold px-1.5 rounded-full text-[9px]">0筆</span>
+                    </div>
+                    <div id="statUnpaid" class="text-sm font-extrabold text-amber-200 tracking-tight truncate">HK$0</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 懸浮 Toast 提示訊息 -->
+        <div id="toast" class="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white border border-indigo-500/40 px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 text-xs font-medium transition-all duration-300 opacity-0 pointer-events-none">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+            <span id="toastText">提示訊息</span>
+        </div>
+
+        <!-- 主內容捲動區 -->
+        <div id="mainContent" class="flex-1 overflow-y-auto px-4 pt-4 pb-28 space-y-4">
+            <!-- 內容會透過 JavaScript 動態渲染 -->
+        </div>
+
+        <!-- 底部導覽列與 iPhone 17 Home Indicator -->
+        <div class="absolute bottom-0 inset-x-0 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800 px-3 pt-2 pb-5 z-20">
+            <div class="grid grid-cols-5 items-center">
+                <button onclick="setTab('expenses')" id="nav-expenses" class="flex flex-col items-center gap-1 py-1 text-indigo-400 font-bold transition">
+                    <i class="fa-solid fa-receipt text-lg"></i>
+                    <span class="text-[10px]">明細</span>
+                </button>
+                <button onclick="setTab('unpaid')" id="nav-unpaid" class="flex flex-col items-center gap-1 py-1 text-slate-400 relative transition">
+                    <i class="fa-solid fa-clock text-lg"></i>
+                    <span class="text-[10px]">未付項目</span>
+                    <span id="navUnpaidBadge" class="absolute top-0 right-3 bg-amber-500 text-slate-950 font-black text-[9px] w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+                </button>
+                <div class="flex justify-center -mt-6">
+                    <button onclick="openAddExpenseModal()" class="bg-gradient-to-tr from-indigo-600 to-violet-500 hover:from-indigo-500 hover:to-violet-400 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/40 border-4 border-slate-900 active:scale-90 transition">
+                        <i class="fa-solid fa-plus text-xl"></i>
+                    </button>
+                </div>
+                <button onclick="setTab('balances')" id="nav-balances" class="flex flex-col items-center gap-1 py-1 text-slate-400 transition">
+                    <i class="fa-solid fa-right-left text-lg"></i>
+                    <span class="text-[10px]">結算/邊個俾</span>
+                </button>
+                <button onclick="setTab('settings')" id="nav-settings" class="flex flex-col items-center gap-1 py-1 text-slate-400 transition">
+                    <i class="fa-solid fa-gear text-lg"></i>
+                    <span class="text-[10px]">旅伴/設定</span>
+                </button>
+            </div>
+            <div class="w-32 h-1 bg-slate-700 rounded-full mx-auto mt-2"></div>
+        </div>
+
+        <!-- 彈出式 Modal 容器 -->
+        <div id="modalOverlay" class="absolute inset-0 z-40 bg-black/60 backdrop-blur-xs flex items-end justify-center hidden">
+            <!-- 內容動態塞入 -->
+        </div>
+    </div>
+
+    <!-- Firebase SDK & 核心應用邏輯 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'travel-split-iphone17';
+
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+
+        // 預設資料
+        const DEFAULT_TRIPS = [
+            {
+                id: 'trip-default-1',
+                name: '🇯🇵 東京賞櫻溫泉之旅',
+                currency: 'JPY',
+                exchangeRate: 0.052,
+                members: [
+                    { id: 'm1', name: '我 (自己)', avatarColor: 'from-blue-500 to-indigo-600' },
+                    { id: 'm2', name: '阿明', avatarColor: 'from-emerald-500 to-teal-600' },
+                    { id: 'm3', name: 'Chloe', avatarColor: 'from-pink-500 to-rose-600' }
+                ],
+                expenses: [
+                    { id: 'e1', title: '新宿燒肉亭', amount: 18000, category: 'food', status: 'paid', payerId: 'm1', splitAmong: ['m1', 'm2', 'm3'], date: '2026-04-10', note: '第一晚慶祝晚餐' },
+                    { id: 'e2', title: '箱根溫泉旅館尾數', amount: 45000, category: 'hotel', status: 'unpaid', payerId: 'm2', splitAmong: ['m1', 'm2', 'm3'], date: '2026-04-12', note: '到店付款' }
+                ]
+            }
+        ];
+
+        const CURRENCY_PRESETS = [
+            { code: 'HKD', symbol: 'HK$', name: '港幣 (HKD)', defaultRate: 1 },
+            { code: 'JPY', symbol: '¥', name: '日圓 (JPY)', defaultRate: 0.052 },
+            { code: 'TWD', symbol: 'NT$', name: '新台幣 (TWD)', defaultRate: 0.24 },
+            { code: 'THB', symbol: '฿', name: '泰銖 (THB)', defaultRate: 0.23 },
+            { code: 'KRW', symbol: '₩', name: '韓元 (KRW)', defaultRate: 0.0057 }
+        ];
+
+        const CATEGORIES = [
+            { id: 'food', name: '餐飲美食', icon: 'fa-utensils', color: 'bg-orange-500/15 text-orange-400' },
+            { id: 'hotel', name: '住宿酒店', icon: 'fa-bed', color: 'bg-indigo-500/15 text-indigo-400' },
+            { id: 'transport', name: '交通車票', icon: 'fa-train-subway', color: 'bg-emerald-500/15 text-emerald-400' },
+            { id: 'ticket', name: '景點門票', icon: 'fa-ticket', color: 'bg-pink-500/15 text-pink-400' },
+            { id: 'shopping', name: '購物手信', icon: 'fa-bag-shopping', color: 'bg-purple-500/15 text-purple-400' },
+            { id: 'other', name: '其他雜項', icon: 'fa-ellipsis', color: 'bg-slate-500/15 text-slate-400' }
+        ];
+
+        // 應用程式狀態
+        window.appState = {
+            trips: DEFAULT_TRIPS,
+            activeTripId: DEFAULT_TRIPS[0].id,
+            activeTab: 'expenses',
+            statusFilter: 'all',
+            includeUnpaidInSettlement: false
+        };
+
+        // 初始化 Firebase
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch(e) {
+                    console.error("Auth error:", e);
+                    setSyncUI('error');
+                }
+            };
+            initAuth();
+
+            onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+                if (user) {
+                    setupListener(user.uid);
+                }
+            });
+        } catch(e) {
+            console.warn("Firebase offline mode / running locally", e);
+            setSyncUI('synced');
+            renderApp();
+        }
+
+        function setupListener(userId) {
+            if (!db) return;
+            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'travel_ledger', 'main_store');
+            onSnapshot(docRef, (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    if (data.trips && Array.isArray(data.trips)) {
+                        window.appState.trips = data.trips;
+                        if (data.activeTripId) window.appState.activeTripId = data.activeTripId;
+                    }
+                    setSyncUI('synced');
+                    renderApp();
+                } else {
+                    saveToCloud(window.appState.trips, window.appState.activeTripId);
+                }
+            }, (err) => {
+                console.error("Firestore error:", err);
+                setSyncUI('error');
+            });
+        }
+
+        window.saveToCloud = async function(trips, activeTripId) {
+            window.appState.trips = trips;
+            if (activeTripId) window.appState.activeTripId = activeTripId;
+            renderApp();
+
+            if (!currentUser || !db) return;
+            setSyncUI('saving');
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_ledger', 'main_store');
+                await setDoc(docRef, {
+                    trips: window.appState.trips,
+                    activeTripId: window.appState.activeTripId,
+                    updatedAt: new Date().toISOString()
+                });
+                setSyncUI('synced');
+            } catch(e) {
+                console.error("Save failed:", e);
+                setSyncUI('error');
+            }
+        };
+
+        function setSyncUI(status) {
+            const dot = document.getElementById('syncDot');
+            const text = document.getElementById('syncText');
+            if (!dot || !text) return;
+            if (status === 'synced') {
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                text.innerText = "雲端記憶已儲存";
+            } else if (status === 'saving') {
+                dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+                text.innerText = "儲存中...";
+            } else {
+                dot.className = "w-2 h-2 rounded-full bg-rose-400";
+                text.innerText = "離線模式";
+            }
+        }
+
+        // --- 核心計算邏輯 ---
+        function getActiveTrip() {
+            return window.appState.trips.find(t => t.id === window.appState.activeTripId) || window.appState.trips[0];
+        }
+
+        window.formatMoney = function(amount, currency) {
+            const trip = getActiveTrip();
+            const curr = currency || trip.currency;
+            const preset = CURRENCY_PRESETS.find(c => c.code === curr) || CURRENCY_PRESETS[0];
+            const isZero = ['JPY', 'KRW', 'TWD'].includes(curr);
+            const num = Number(amount || 0).toLocaleString('en-US', { minimumFractionDigits: isZero?0:1, maximumFractionDigits: isZero?0:1 });
+            return `${preset.symbol}${num}`;
+        };
+
+        window.formatHKD = function(foreignAmount) {
+            const trip = getActiveTrip();
+            const hkd = (Number(foreignAmount) || 0) * (Number(trip.exchangeRate) || 1);
+            return `HK$${hkd.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+        };
+
+        function calculateStats() {
+            const trip = getActiveTrip();
+            const expenses = trip.expenses || [];
+            const members = trip.members || [];
+            const rate = Number(trip.exchangeRate) || 1;
+
+            let totalExpense = 0;
+            let totalPaid = 0;
+            let totalUnpaid = 0;
+
+            const memberMap = {};
+            members.forEach(m => {
+                memberMap[m.id] = { ...m, paidAmount: 0, assignedUnpaid: 0, sharePaid: 0, shareAll: 0, paidCount: 0 };
+            });
+
+            expenses.forEach(exp => {
+                const amt = Number(exp.amount) || 0;
+                totalExpense += amt;
+
+                const validSplit = (exp.splitAmong || []).filter(id => memberMap[id]);
+                const perPerson = validSplit.length > 0 ? amt / validSplit.length : 0;
+
+                validSplit.forEach(id => { memberMap[id].shareAll += perPerson; });
+
+                if (exp.status === 'paid') {
+                    totalPaid += amt;
+                    if (exp.payerId && memberMap[exp.payerId]) {
+                        memberMap[exp.payerId].paidAmount += amt;
+                        memberMap[exp.payerId].paidCount += 1;
+                    }
+                    validSplit.forEach(id => { memberMap[id].sharePaid += perPerson; });
+                } else {
+                    totalUnpaid += amt;
+                    if (exp.payerId && memberMap[exp.payerId]) {
+                        memberMap[exp.payerId].assignedUnpaid += amt;
+                    }
+                }
+            });
+
+            const includeUnpaid = window.appState.includeUnpaidInSettlement;
+            const memberBalances = Object.values(memberMap).map(m => {
+                const actualPaid = includeUnpaid ? m.paidAmount + m.assignedUnpaid : m.paidAmount;
+                const targetShare = includeUnpaid ? m.shareAll : m.sharePaid;
+                const net = actualPaid - targetShare;
+                return { ...m, targetShare, net };
+            });
+
+            // 計算最簡轉帳建議
+            const debtors = memberBalances.filter(m => m.net < -0.5).map(m => ({ id: m.id, name: m.name, amount: Math.abs(m.net) })).sort((a,b)=>b.amount-a.amount);
+            const creditors = memberBalances.filter(m => m.net > 0.5).map(m => ({ id: m.id, name: m.name, amount: m.net })).sort((a,b)=>b.amount-a.amount);
+
+            const settlements = [];
+            let i = 0, j = 0;
+            while (i < debtors.length && j < creditors.length) {
+                const d = debtors[i], c = creditors[j];
+                const amt = Math.min(d.amount, c.amount);
+                if (amt > 0.5) {
+                    settlements.push({ fromName: d.name, toName: c.name, amount: amt, hkdAmount: amt * rate });
+                }
+                d.amount -= amt; c.amount -= amt;
+                if (d.amount < 0.5) i++;
+                if (c.amount < 0.5) j++;
+            }
+
+            return {
+                totalExpense, totalPaid, totalUnpaid,
+                paidItemsCount: expenses.filter(e => e.status === 'paid').length,
+                unpaidItemsCount: expenses.filter(e => e.status === 'unpaid').length,
+                memberBalances, settlements
+            };
+        }
+
+        // --- 介面渲染主控函式 ---
+        window.renderApp = function() {
+            const trip = getActiveTrip();
+            const stats = calculateStats();
+
+            // 更新頂部選單
+            const tripSel = document.getElementById('tripSelector');
+            if (tripSel) {
+                tripSel.innerHTML = window.appState.trips.map(t => `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''}>${t.name}</option>`).join('') +
+                                   `<option value="NEW_TRIP">＋ 建立新旅程帳本...</option>`;
+            }
+
+            // 更新頂部統計卡
+            document.getElementById('statTotal').innerText = formatMoney(stats.totalExpense);
+            document.getElementById('statTotalForeign').innerText = trip.currency !== 'HKD' ? `≈ ${formatHKD(stats.totalExpense)}` : '';
+            document.getElementById('statPaid').innerText = formatMoney(stats.totalPaid);
+            document.getElementById('statPaidCount').innerText = `${stats.paidItemsCount}筆`;
+            document.getElementById('statUnpaid').innerText = formatMoney(stats.totalUnpaid);
+            document.getElementById('statUnpaidCount').innerText = `${stats.unpaidItemsCount}筆`;
+
+            // 更新底部標籤與 Badge
+            const badge = document.getElementById('navUnpaidBadge');
+            if (stats.unpaidItemsCount > 0) {
+                badge.innerText = stats.unpaidItemsCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            // 標示 active tab
+            ['expenses', 'unpaid', 'balances', 'settings'].forEach(tab => {
+                const btn = document.getElementById(`nav-${tab}`);
+                if (btn) {
+                    if (window.appState.activeTab === tab) {
+                        btn.className = "flex flex-col items-center gap-1 py-1 text-indigo-400 font-bold transition";
+                    } else {
+                        btn.className = "flex flex-col items-center gap-1 py-1 text-slate-400 transition";
+                    }
+                }
+            });
+
+            // 渲染主內容區
+            const content = document.getElementById('mainContent');
+            const tab = window.appState.activeTab;
+
+            if (tab === 'expenses') {
+                content.innerHTML = renderExpensesTab(trip, stats);
+            } else if (tab === 'unpaid') {
+                content.innerHTML = renderUnpaidTab(trip, stats);
+            } else if (tab === 'balances') {
+                content.innerHTML = renderBalancesTab(trip, stats);
+            } else if (tab === 'settings') {
+                content.innerHTML = renderSettingsTab(trip, stats);
+            }
+        };
+
+        // --- TAB 1: 項目明細渲染 ---
+        function renderExpensesTab(trip, stats) {
+            const filter = window.appState.statusFilter;
+            let list = trip.expenses || [];
+            if (filter === 'paid') list = list.filter(e => e.status === 'paid');
+            if (filter === 'unpaid') list = list.filter(e => e.status === 'unpaid');
+
+            let html = `
+                <div class="flex bg-slate-800 p-1 rounded-2xl text-xs font-semibold">
+                    <button onclick="setStatusFilter('all')" class="flex-1 py-2 rounded-xl transition ${filter==='all'?'bg-slate-700 text-white shadow-xs':'text-slate-400'}">全部 (${trip.expenses.length})</button>
+                    <button onclick="setStatusFilter('paid')" class="flex-1 py-2 rounded-xl transition ${filter==='paid'?'bg-emerald-600 text-white shadow-xs':'text-slate-400'}"><i class="fa-solid fa-check"></i> 已付 (${stats.paidItemsCount})</button>
+                    <button onclick="setStatusFilter('unpaid')" class="flex-1 py-2 rounded-xl transition ${filter==='unpaid'?'bg-amber-500 text-slate-950 font-bold shadow-xs':'text-slate-400'}"><i class="fa-solid fa-clock"></i> 未付 (${stats.unpaidItemsCount})</button>
+                </div>
+
+                <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-3 shadow-xs">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-coins text-indigo-400"></i> 邊個俾咗錢 (已墊支)</span>
+                        <button onclick="setTab('balances')" class="text-[11px] text-indigo-400 font-semibold">睇結算 <i class="fa-solid fa-chevron-right text-[9px]"></i></button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+            `;
+
+            stats.memberBalances.forEach(m => {
+                html += `
+                    <div class="bg-slate-900/60 rounded-xl p-2 text-center border border-slate-800">
+                        <div class="w-7 h-7 mx-auto rounded-full bg-gradient-to-br ${m.avatarColor} text-white font-bold text-xs flex items-center justify-center mb-1">${m.name.slice(0,1)}</div>
+                        <div class="text-xs font-bold truncate">${m.name}</div>
+                        <div class="text-[11px] text-emerald-400 font-extrabold truncate mt-0.5">${formatMoney(m.paidAmount)}</div>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+
+            if (list.length === 0) {
+                html += `
+                    <div class="text-center py-12 bg-slate-800/40 rounded-3xl border border-dashed border-slate-700 p-6">
+                        <i class="fa-solid fa-receipt text-3xl text-slate-500 mb-2"></i>
+                        <p class="text-sm font-bold text-slate-300">暫時沒有相關公數項目</p>
+                        <button onclick="openAddExpenseModal()" class="mt-3 bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-2xl">+ 立即記一筆</button>
+                    </div>
+                `;
+            } else {
+                html += `<div class="space-y-2.5">`;
+                list.forEach(exp => {
+                    const cat = CATEGORIES.find(c => c.id === exp.category) || CATEGORIES[0];
+                    const isPaid = exp.status === 'paid';
+                    const payer = trip.members.find(m => m.id === exp.payerId);
+
+                    html += `
+                        <div onclick="openEditExpenseModal('${exp.id}')" class="bg-slate-800/90 rounded-2xl p-3.5 border transition active:scale-[0.99] cursor-pointer shadow-xs ${isPaid?'border-slate-700':'border-amber-500/50 bg-amber-950/10'}">
+                            <div class="flex items-start gap-3">
+                                <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${cat.color}"><i class="fa-solid ${cat.icon} text-base"></i></div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <h3 class="font-bold text-sm text-white truncate">${exp.title}</h3>
+                                        <span class="font-extrabold text-base text-white shrink-0">${formatMoney(exp.amount)}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between mt-1">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            ${isPaid ? 
+                                                `<span class="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-lg"><i class="fa-solid fa-circle-check text-[10px]"></i> ${payer?payer.name:'已付'}</span>` : 
+                                                `<span class="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-500/30"><i class="fa-solid fa-clock text-[10px]"></i> 未付</span>`
+                                            }
+                                            <span class="text-[11px] text-slate-400">• ${exp.splitAmong?.length || 0}人夾</span>
+                                        </div>
+                                        ${trip.currency !== 'HKD' ? `<span class="text-xs text-slate-400">≈ ${formatHKD(exp.amount)}</span>` : ''}
+                                    </div>
+                                    ${(exp.note || !isPaid) ? `
+                                        <div class="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between gap-2">
+                                            <span class="text-[11px] text-slate-400 truncate">${exp.note ? '💬 '+exp.note : '📅 '+exp.date}</span>
+                                            ${!isPaid ? `<button onclick="event.stopPropagation(); openQuickPay('${exp.id}')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[11px] px-2.5 py-1 rounded-xl flex items-center gap-1"><i class="fa-solid fa-check"></i> 標記已付</button>` : ''}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            return html;
+        }
+
+        // --- TAB 2: 未付待辦專區 ---
+        function renderUnpaidTab(trip, stats) {
+            const unpaidList = (trip.expenses || []).filter(e => e.status === 'unpaid');
+            let html = `
+                <div class="bg-gradient-to-br from-amber-500 to-orange-600 text-slate-950 rounded-3xl p-4 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold bg-black/15 text-white px-2.5 py-1 rounded-full"><i class="fa-solid fa-clock"></i> 尚未付款項目統計</span>
+                        <button onclick="openAddExpenseModal('unpaid')" class="bg-slate-950 text-white text-xs font-bold px-3 py-1.5 rounded-xl"><i class="fa-solid fa-plus"></i> 新增未付</button>
+                    </div>
+                    <div class="mt-3">
+                        <div class="text-xs font-bold opacity-80">尚需準備公數資金：</div>
+                        <div class="text-2xl font-black tracking-tight mt-0.5">${formatMoney(stats.totalUnpaid)}</div>
+                        ${trip.currency !== 'HKD' ? `<div class="text-sm font-extrabold opacity-90">折合港幣約 ${formatHKD(stats.totalUnpaid)}</div>` : ''}
+                    </div>
+                </div>
+            `;
+
+            if (unpaidList.length === 0) {
+                html += `
+                    <div class="text-center py-12 bg-slate-800/50 rounded-3xl border border-slate-700 p-6">
+                        <i class="fa-solid fa-circle-check text-4xl text-emerald-400 mb-2"></i>
+                        <h4 class="font-bold text-base">太好了！所有公數均已付清</h4>
+                    </div>
+                `;
+            } else {
+                html += `<div class="space-y-3">`;
+                unpaidList.forEach(exp => {
+                    const cat = CATEGORIES.find(c => c.id === exp.category) || CATEGORIES[0];
+                    html += `
+                        <div class="bg-slate-800 border-2 border-amber-500/40 rounded-2xl p-4 shadow-sm">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-10 h-10 rounded-2xl flex items-center justify-center ${cat.color}"><i class="fa-solid ${cat.icon}"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-sm text-white">${exp.title}</h4>
+                                        <p class="text-xs text-slate-400 mt-0.5">${exp.splitAmong.length}人分擔 • ${exp.note || exp.date}</p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-black text-base text-amber-400">${formatMoney(exp.amount)}</div>
+                                    ${trip.currency !== 'HKD' ? `<div class="text-xs text-slate-400">≈ ${formatHKD(exp.amount)}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="mt-3 pt-2.5 border-t border-slate-700 flex items-center justify-between">
+                                <button onclick="openEditExpenseModal('${exp.id}')" class="text-xs text-slate-400 hover:text-white"><i class="fa-solid fa-pen"></i> 修改</button>
+                                <button onclick="openQuickPay('${exp.id}')" class="bg-emerald-500 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> 現已付款</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+            return html;
+        }
+
+        // --- TAB 3: 結算與誰給了錢 ---
+        function renderBalancesTab(trip, stats) {
+            const includeUnpaid = window.appState.includeUnpaidInSettlement;
+            let html = `
+                <div class="bg-slate-800 rounded-2xl p-3.5 border border-slate-700 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-white">連同「未付項目」預先夾錢？</div>
+                        <div class="text-[11px] text-slate-400">${includeUnpaid ? '計算包含已指派的未付項目' : '只計算實際已付項目'}</div>
+                    </div>
+                    <button onclick="toggleIncludeUnpaid()" class="w-12 h-7 rounded-full p-1 transition-colors ${includeUnpaid?'bg-indigo-600':'bg-slate-700'}">
+                        <div class="w-5 h-5 rounded-full bg-white shadow-md transform transition-transform ${includeUnpaid?'translate-x-5':'translate-x-0'}"></div>
+                    </button>
+                </div>
+
+                <div class="bg-slate-800 rounded-3xl p-4 border border-slate-700 space-y-3">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400"><i class="fa-solid fa-users text-indigo-400"></i> 旅伴墊支與分擔明細</h3>
+                    <div class="space-y-2.5">
+            `;
+
+            stats.memberBalances.forEach(m => {
+                const isCred = m.net >= 0;
+                html += `
+                    <div class="bg-slate-900/60 rounded-2xl p-3.5 border border-slate-800">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br ${m.avatarColor} text-white font-bold text-sm flex items-center justify-center">${m.name.slice(0,1)}</div>
+                                <div>
+                                    <div class="font-bold text-sm text-white">${m.name}</div>
+                                    <div class="text-[11px] text-slate-400">已付 ${m.paidCount} 筆 • 共 ${formatMoney(m.paidAmount)}</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs font-extrabold px-2.5 py-1 rounded-xl ${Math.abs(m.net)<0.5?'bg-slate-800 text-slate-400':isCred?'bg-emerald-500/15 text-emerald-400':'bg-rose-500/15 text-rose-400'}">
+                                    ${Math.abs(m.net)<0.5?'已平數':isCred?`應收回 ${formatHKD(m.net)}`:`應夾返 ${formatHKD(Math.abs(m.net))}`}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+
+            // 轉帳建議
+            html += `
+                <div class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl p-4 shadow-lg border border-indigo-500/30 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-indigo-300"><i class="fa-solid fa-right-left"></i> 最簡夾錢方案 (PayMe / FPS)</h3>
+                        <button onclick="copySummary()" class="text-[11px] bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-xl font-semibold"><i class="fa-regular fa-copy"></i> 複製</button>
+                    </div>
+            `;
+
+            if (stats.settlements.length === 0) {
+                html += `<div class="text-center py-6 text-indigo-200 text-xs">🎉 目前所有帳目均已平數，無須轉帳！</div>`;
+            } else {
+                stats.settlements.forEach(s => {
+                    html += `
+                        <div class="bg-white/10 rounded-2xl p-3 flex items-center justify-between border border-white/10 text-xs font-bold">
+                            <div><span class="bg-rose-500/30 text-rose-200 px-2 py-0.5 rounded-lg">${s.fromName}</span> ➔ <span class="bg-emerald-500/30 text-emerald-200 px-2 py-0.5 rounded-lg">${s.toName}</span></div>
+                            <div class="text-amber-300 text-sm font-black">HK$${s.hkdAmount.toFixed(1)}</div>
+                        </div>
+                    `;
+                });
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        // --- TAB 4: 設定與旅伴 ---
+        function renderSettingsTab(trip) {
+            let html = `
+                <div class="bg-slate-800 rounded-3xl p-4 border border-slate-700 space-y-3">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400"><i class="fa-solid fa-users text-indigo-400"></i> 同行旅伴名單 (${trip.members.length}人)</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newMemberInput" placeholder="輸入新旅伴名稱..." class="flex-1 bg-slate-900 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-indigo-500">
+                        <button onclick="addMember()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2.5 rounded-2xl shrink-0">+ 加入</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+            `;
+
+            const colors = ['from-blue-500 to-indigo-600','from-emerald-500 to-teal-600','from-pink-500 to-rose-600','from-amber-500 to-orange-600','from-purple-500 to-violet-600'];
+            trip.members.forEach((m, idx) => {
+                html += `
+                    <div class="flex items-center justify-between bg-slate-900 px-3 py-2 rounded-2xl border border-slate-800">
+                        <div class="flex items-center gap-2 truncate">
+                            <div class="w-6 h-6 rounded-full bg-gradient-to-br ${m.avatarColor||colors[idx%colors.length]} text-white text-xs font-bold flex items-center justify-center">${m.name.slice(0,1)}</div>
+                            <span class="text-xs font-bold truncate">${m.name}</span>
+                        </div>
+                        ${trip.members.length > 1 ? `<button onclick="removeMember('${m.id}')" class="text-slate-400 hover:text-rose-500 p-1"><i class="fa-solid fa-xmark text-xs"></i></button>` : ''}
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 rounded-3xl p-4 border border-slate-700 space-y-3">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400"><i class="fa-solid fa-plane text-indigo-400"></i> 旅程與貨幣設定</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold mb-1 text-slate-400">旅程名稱</label>
+                            <input type="text" id="tripNameInput" value="${trip.name}" onchange="updateTripName(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold mb-1 text-slate-400">記帳貨幣</label>
+                                <select id="currencySelect" onchange="updateTripCurrency(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-2xl px-3 py-2.5 text-xs font-bold">
+                                    ${CURRENCY_PRESETS.map(c => `<option value="${c.code}" ${c.code===trip.currency?'selected':''}>${c.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold mb-1 text-slate-400">匯率 (1 ${trip.currency} = ? HKD)</label>
+                                <input type="number" step="0.0001" value="${trip.exchangeRate}" onchange="updateTripRate(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="openNewTripModal()" class="flex-1 bg-indigo-600/20 text-indigo-300 font-bold text-xs py-3 rounded-2xl flex items-center justify-center gap-1.5"><i class="fa-solid fa-plus"></i> 開設新旅程</button>
+                    <button onclick="clearTripExpenses()" class="bg-rose-500/20 text-rose-400 font-bold text-xs px-4 py-3 rounded-2xl"><i class="fa-solid fa-rotate-right"></i> 清空紀錄</button>
+                </div>
+            `;
+            return html;
+        }
+
+        // --- 互動與 Modal 控制 ---
+        window.setTab = function(tab, subFilter) {
+            window.appState.activeTab = tab;
+            if (subFilter) window.appState.statusFilter = subFilter;
+            renderApp();
+        };
+
+        window.setStatusFilter = function(filter) {
+            window.appState.statusFilter = filter;
+            renderApp();
+        };
+
+        window.toggleIncludeUnpaid = function() {
+            window.appState.includeUnpaidInSettlement = !window.appState.includeUnpaidInSettlement;
+            renderApp();
+        };
+
+        window.switchTrip = function(id) {
+            if (id === 'NEW_TRIP') {
+                openNewTripModal();
+                return;
+            }
+            window.appState.activeTripId = id;
+            renderApp();
+        };
+
+        window.showToast = function(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastText').innerText = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2500);
+        };
+
+        // Modal 彈出視窗
+        window.openModal = function(htmlContent) {
+            const overlay = document.getElementById('modalOverlay');
+            overlay.innerHTML = `<div class="bg-slate-900 w-full max-h-[90%] rounded-t-[32px] p-5 overflow-y-auto border-t border-slate-800 shadow-2xl animate-in slide-in-from-bottom duration-200">${htmlContent}</div>`;
+            overlay.classList.remove('hidden');
+        };
+
+        window.closeModal = function() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        };
+
+        window.openAddExpenseModal = function(defaultStatus = 'paid') {
+            const trip = getActiveTrip();
+            const membersHtml = trip.members.map(m => `
+                <button type="button" onclick="selectPayer('${m.id}')" id="payerBtn-${m.id}" class="payer-pill py-2 px-3 rounded-xl text-xs font-bold border border-slate-700 text-slate-300">${m.name}</button>
+            `).join('');
+
+            const splitHtml = trip.members.map(m => `
+                <button type="button" onclick="toggleSplit('${m.id}')" id="splitBtn-${m.id}" class="split-pill py-2 px-3 rounded-xl text-xs font-bold border border-indigo-500 bg-indigo-500/20 text-indigo-300 flex items-center justify-between" data-id="${m.id}">
+                    <span>${m.name}</span><i class="fa-solid fa-check"></i>
+                </button>
+            `).join('');
+
+            const catHtml = CATEGORIES.map(c => `
+                <button type="button" onclick="selectCat('${c.id}')" id="catBtn-${c.id}" class="cat-pill flex flex-col items-center gap-1 py-2 rounded-2xl border text-[10px] font-bold ${c.id==='food'?'border-indigo-500 text-indigo-300 bg-indigo-500/20':'border-slate-800 text-slate-400'}" data-id="${c.id}">
+                    <i class="fa-solid ${c.icon}"></i><span>${c.name.slice(0,2)}</span>
+                </button>
+            `).join('');
+
+            const html = `
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-extrabold text-base">新增公數項目</h3>
+                    <button onclick="closeModal()" class="text-slate-400"><i class="fa-solid fa-xmark text-lg"></i></button>
+                </div>
+                <form id="expenseForm" onsubmit="saveExpense(event)" class="space-y-4">
+                    <input type="hidden" id="expStatus" value="${defaultStatus}">
+                    <input type="hidden" id="expCategory" value="food">
+                    <input type="hidden" id="expPayerId" value="${trip.members[0]?.id || ''}">
+
+                    <div class="grid grid-cols-2 gap-2 bg-slate-800 p-1.5 rounded-2xl">
+                        <button type="button" onclick="setExpStatus('paid')" id="statusPaidBtn" class="py-2.5 rounded-xl font-bold text-xs ${defaultStatus==='paid'?'bg-emerald-500 text-slate-950':'text-slate-400'}"><i class="fa-solid fa-check"></i> 已付項目</button>
+                        <button type="button" onclick="setExpStatus('unpaid')" id="statusUnpaidBtn" class="py-2.5 rounded-xl font-bold text-xs ${defaultStatus==='unpaid'?'bg-amber-500 text-slate-950':'text-slate-400'}"><i class="fa-solid fa-clock"></i> 未付待辦</button>
+                    </div>
+
+                    <div class="grid grid-cols-5 gap-2.5">
+                        <div class="col-span-3">
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1">項目名稱</label>
+                            <input type="text" id="expTitle" required placeholder="例：晚餐燒肉" class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-sm font-bold focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-[11px] font-bold text-slate-400 mb-1">金額 (${trip.currency})</label>
+                            <input type="number" step="any" id="expAmount" required placeholder="0.00" class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-sm font-black text-indigo-400 focus:outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5">項目類別</label>
+                        <div class="grid grid-cols-6 gap-1">${catHtml}</div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5">付款人 / 墊支人</label>
+                        <div class="grid grid-cols-3 gap-2" id="payerContainer">${membersHtml}</div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1.5">分擔成員 (全選)</label>
+                        <div class="grid grid-cols-2 gap-2" id="splitContainer">${splitHtml}</div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 mb-1">備註 (選填)</label>
+                        <input type="text" id="expNote" placeholder="例：包每人一杯飲品" class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-3.5 py-2 text-xs">
+                    </div>
+
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg">確認記帳 (自動雲端記憶)</button>
+                </form>
+            `;
+            openModal(html);
+            // 預設選中第一位payer
+            if (trip.members.length > 0) selectPayer(trip.members[0].id);
+        };
+
+        window.openEditExpenseModal = function(id) {
+            const trip = getActiveTrip();
+            const exp = trip.expenses.find(e => e.id === id);
+            if (!exp) return;
+
+            openAddExpenseModal(exp.status);
+            document.getElementById('expTitle').value = exp.title;
+            document.getElementById('expAmount').value = exp.amount;
+            document.getElementById('expNote').value = exp.note || '';
+            document.getElementById('expStatus').value = exp.status;
+            document.getElementById('expCategory').value = exp.category;
+            selectCat(exp.category);
+            selectPayer(exp.payerId);
+            setExpStatus(exp.status);
+
+            // 修改 Form 提交行為為更新
+            const form = document.getElementById('expenseForm');
+            form.onsubmit = function(e) {
+                e.preventDefault();
+                exp.title = document.getElementById('expTitle').value.trim();
+                exp.amount = parseFloat(document.getElementById('expAmount').value) || 0;
+                exp.category = document.getElementById('expCategory').value;
+                exp.status = document.getElementById('expStatus').value;
+                exp.payerId = document.getElementById('expPayerId').value;
+                exp.note = document.getElementById('expNote').value.trim();
+                
+                const splitIds = [];
+                document.querySelectorAll('.split-pill').forEach(btn => {
+                    if (btn.classList.contains('bg-indigo-500/20')) splitIds.push(btn.getAttribute('data-id'));
+                });
+                exp.splitAmong = splitIds;
+
+                saveToCloud(window.appState.trips);
+                closeModal();
+                showToast('已更新公數項目');
+            };
+        };
+
+        window.setExpStatus = function(status) {
+            document.getElementById('expStatus').value = status;
+            const pBtn = document.getElementById('statusPaidBtn');
+            const uBtn = document.getElementById('statusUnpaidBtn');
+            if (status === 'paid') {
+                pBtn.className = "py-2.5 rounded-xl font-bold text-xs bg-emerald-500 text-slate-950";
+                uBtn.className = "py-2.5 rounded-xl font-bold text-xs text-slate-400";
+            } else {
+                uBtn.className = "py-2.5 rounded-xl font-bold text-xs bg-amber-500 text-slate-950";
+                pBtn.className = "py-2.5 rounded-xl font-bold text-xs text-slate-400";
+            }
+        };
+
+        window.selectCat = function(catId) {
+            document.getElementById('expCategory').value = catId;
+            document.querySelectorAll('.cat-pill').forEach(btn => {
+                if (btn.getAttribute('data-id') === catId) {
+                    btn.className = "cat-pill flex flex-col items-center gap-1 py-2 rounded-2xl border text-[10px] font-bold border-indigo-500 text-indigo-300 bg-indigo-500/20";
+                } else {
+                    btn.className = "cat-pill flex flex-col items-center gap-1 py-2 rounded-2xl border text-[10px] font-bold border-slate-800 text-slate-400";
+                }
+            });
+        };
+
+        window.selectPayer = function(payerId) {
+            document.getElementById('expPayerId').value = payerId;
+            document.querySelectorAll('.payer-pill').forEach(btn => {
+                if (btn.id === `payerBtn-${payerId}`) {
+                    btn.className = "payer-pill py-2 px-3 rounded-xl text-xs font-bold border border-emerald-500 bg-emerald-500/20 text-emerald-300";
+                } else {
+                    btn.className = "payer-pill py-2 px-3 rounded-xl text-xs font-bold border border-slate-700 text-slate-300";
+                }
+            });
+        };
+
+        window.toggleSplit = function(id) {
+            const btn = document.getElementById(`splitBtn-${id}`);
+            if (btn.classList.contains('bg-indigo-500/20')) {
+                btn.className = "split-pill py-2 px-3 rounded-xl text-xs font-bold border border-slate-700 text-slate-500 flex items-center justify-between opacity-50";
+                btn.querySelector('i').className = "fa-solid fa-xmark";
+            } else {
+                btn.className = "split-pill py-2 px-3 rounded-xl text-xs font-bold border border-indigo-500 bg-indigo-500/20 text-indigo-300 flex items-center justify-between";
+                btn.querySelector('i').className = "fa-solid fa-check";
+            }
+        };
+
+        window.saveExpense = function(e) {
+            e.preventDefault();
+            const trip = getActiveTrip();
+            const title = document.getElementById('expTitle').value.trim();
+            const amount = parseFloat(document.getElementById('expAmount').value) || 0;
+            const category = document.getElementById('expCategory').value;
+            const status = document.getElementById('expStatus').value;
+            const payerId = document.getElementById('expPayerId').value;
+            const note = document.getElementById('expNote').value.trim();
+
+            const splitIds = [];
+            document.querySelectorAll('.split-pill').forEach(btn => {
+                if (btn.classList.contains('bg-indigo-500/20')) splitIds.push(btn.getAttribute('data-id'));
+            });
+
+            if (!title || amount <= 0) {
+                showToast('請輸入有效名稱與金額');
+                return;
+            }
+
+            const newExp = {
+                id: 'exp-' + Date.now(),
+                title, amount, category, status, payerId,
+                splitAmong: splitIds.length > 0 ? splitIds : trip.members.map(m => m.id),
+                date: new Date().toISOString().split('T')[0],
+                note
+            };
+
+            trip.expenses.unshift(newExp);
+            saveToCloud(window.appState.trips);
+            closeModal();
+            showToast('已成功記帳！');
+        };
+
+        window.openQuickPay = function(expId) {
+            const trip = getActiveTrip();
+            const exp = trip.expenses.find(e => e.id === expId);
+            if (!exp) return;
+
+            const html = `
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs font-extrabold text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-full">完成付款確認</span>
+                    <button onclick="closeModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <h4 class="font-bold text-base mb-1">${exp.title}</h4>
+                <p class="text-sm font-black text-indigo-400 mb-4">${formatMoney(exp.amount)}</p>
+                <p class="text-xs text-slate-400 mb-3">請選擇這筆費用是由邊個付款：</p>
+                <div class="grid grid-cols-2 gap-2">
+                    ${trip.members.map(m => `
+                        <button onclick="confirmQuickPay('${exp.id}', '${m.id}')" class="bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 font-bold text-xs py-3 rounded-2xl border border-slate-700 transition">${m.name} 俾錢</button>
+                    `).join('')}
+                </div>
+            `;
+            openModal(html);
+        };
+
+        window.confirmQuickPay = function(expId, payerId) {
+            const trip = getActiveTrip();
+            const exp = trip.expenses.find(e => e.id === expId);
+            if (exp) {
+                exp.status = 'paid';
+                exp.payerId = payerId;
+                saveToCloud(window.appState.trips);
+                closeModal();
+                showToast('已標記為已付款！');
+            }
+        };
+
+        window.openNewTripModal = function() {
+            const html = `
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-extrabold text-sm">開設新旅行帳本</h4>
+                    <button onclick="closeModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <form onsubmit="createNewTrip(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">旅程名稱</label>
+                        <input type="text" id="newTripName" required placeholder="🇹🇼 台北美食團" class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">消費貨幣</label>
+                        <select id="newTripCurrency" class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-3.5 py-2.5 text-xs font-bold">
+                            ${CURRENCY_PRESETS.map(c => `<option value="${c.code}">${c.name}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold text-xs py-3 rounded-2xl shadow-lg">建立並切換</button>
+                </form>
+            `;
+            openModal(html);
+        };
+
+        window.createNewTrip = function(e) {
+            e.preventDefault();
+            const name = document.getElementById('newTripName').value.trim();
+            const currency = document.getElementById('newTripCurrency').value;
+            const preset = CURRENCY_PRESETS.find(c => c.code === currency);
+
+            const newTrip = {
+                id: 'trip-' + Date.now(),
+                name, currency,
+                exchangeRate: preset ? preset.defaultRate : 1,
+                members: [
+                    { id: 'm1', name: '我 (自己)', avatarColor: 'from-blue-500 to-indigo-600' },
+                    { id: 'm2', name: '旅伴 A', avatarColor: 'from-emerald-500 to-teal-600' }
+                ],
+                expenses: []
+            };
+
+            window.appState.trips.push(newTrip);
+            saveToCloud(window.appState.trips, newTrip.id);
+            closeModal();
+            showToast(`已建立新旅程：${name}`);
+        };
+
+        window.addMember = function() {
+            const input = document.getElementById('newMemberInput');
+            const name = input.value.trim();
+            if (!name) return;
+
+            const trip = getActiveTrip();
+            trip.members.push({
+                id: 'm-' + Date.now(),
+                name,
+                avatarColor: 'from-purple-500 to-violet-600'
+            });
+            input.value = '';
+            saveToCloud(window.appState.trips);
+            showToast(`已加入旅伴：${name}`);
+        };
+
+        window.removeMember = function(memberId) {
+            const trip = getActiveTrip();
+            if (trip.members.length <= 1) {
+                showToast('至少需保留一位成員');
+                return;
+            }
+            trip.members = trip.members.filter(m => m.id !== memberId);
+            saveToCloud(window.appState.trips);
+            showToast('已移除成員');
+        };
+
+        window.updateTripName = function(val) {
+            getActiveTrip().name = val.trim();
+            saveToCloud(window.appState.trips);
+        };
+
+        window.updateTripCurrency = function(code) {
+            const trip = getActiveTrip();
+            const preset = CURRENCY_PRESETS.find(c => c.code === code);
+            trip.currency = code;
+            if (preset) trip.exchangeRate = preset.defaultRate;
+            saveToCloud(window.appState.trips);
+        };
+
+        window.updateTripRate = function(val) {
+            getActiveTrip().exchangeRate = parseFloat(val) || 1;
+            saveToCloud(window.appState.trips);
+        };
+
+        window.clearTripExpenses = function() {
+            getActiveTrip().expenses = [];
+            saveToCloud(window.appState.trips);
+            showToast('已清空當前帳本紀錄');
+        };
+
+        window.copySummary = function() {
+            const trip = getActiveTrip();
+            const stats = calculateStats();
+            const lines = [
+                `✈️ 【${trip.name} - 公數結算表】`,
+                `💰 總開支：${formatMoney(stats.totalExpense)} (${formatHKD(stats.totalExpense)})`,
+                `✅ 已付：${formatMoney(stats.totalPaid)} | ⏳ 未付：${formatMoney(stats.totalUnpaid)}`,
+                `----------------------`
+            ];
+            stats.memberBalances.forEach(m => {
+                lines.push(`• ${m.name}：已付 ${formatMoney(m.paidAmount)} (${m.net >= 0 ? '應收' : '應夾'} ${formatHKD(Math.abs(m.net))})`);
+            });
+            if (stats.settlements.length > 0) {
+                lines.push(`----------------------`);
+                lines.push(`📲 轉帳建議 (PayMe / FPS)：`);
+                stats.settlements.forEach(s => {
+                    lines.push(`👉 ${s.fromName} 轉 HK$${s.hkdAmount.toFixed(1)} 俾 ${s.toName}`);
+                });
+            }
+
+            const ta = document.createElement('textarea');
+            ta.value = lines.join('\n');
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showToast('已複製 WhatsApp 結算清單！');
+            } catch {
+                showToast('複製失敗');
+            }
+            document.body.removeChild(ta);
+        };
+
+        // 手機外框切換
+        let framed = true;
+        window.togglePhoneFrame = function() {
+            const wrap = document.getElementById('phoneWrapper');
+            const btn = document.getElementById('frameToggleBtn');
+            framed = !framed;
+            if (framed) {
+                wrap.className = "relative w-full h-dvh sm:w-[412px] sm:h-[884px] sm:rounded-[54px] sm:border-[10px] sm:border-slate-800 sm:shadow-[0_0_60px_rgba(79,70,229,0.25)] bg-slate-900 text-slate-100 flex flex-col overflow-hidden transition-all duration-300";
+                btn.innerText = "切換全寬顯示";
+            } else {
+                wrap.className = "relative w-full h-dvh max-w-lg mx-auto sm:rounded-3xl sm:h-[92vh] sm:border sm:border-slate-800 bg-slate-900 text-slate-100 flex flex-col overflow-hidden transition-all duration-300";
+                btn.innerText = "切換 iPhone 17 外框";
+            }
+        };
+
+        // 時鐘更新
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+            const el = document.getElementById('currentTime');
+            if (el) el.innerText = timeStr;
+        }, 1000);
+
+        // 初始渲染
+        renderApp();
+    </script>
+</body>
+</html>
